@@ -15,15 +15,19 @@ jobs:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
 
-    - name: Build inside ARM64 Ubuntu 20.04 Container
+    - name: Build inside ARM64 Debian 11 Container (GLIBC 2.31)
       uses: uraimo/run-on-arch-action@v2
       with:
         arch: aarch64
-        distro: ubuntu20.04
+        distro: debian11
         githubToken: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Verhindert interaktive Abfragen während der Installation
+          export DEBIAN_FRONTEND=noninteractive
+          
+          # Paketquellen aktualisieren und ALLE benötigten Abhängigkeiten installieren
           apt-get update
-          apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev zip git
+          apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev libjpeg-dev libopus-dev zlib1g-dev zip git
           
           # Klonen des für PortMaster optimierten DarkPlaces-Codes von Slayer366
           git clone https://github.com/slayer366/darkplaces.git engine-src
