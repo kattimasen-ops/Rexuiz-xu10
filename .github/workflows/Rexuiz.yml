@@ -1,0 +1,59 @@
+name: Build Rexuiz for R36S
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Build inside ARM64 Ubuntu 20.04 Container
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        arch: aarch64
+        distro: ubuntu20.04
+        githubToken: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          apt-get update
+          apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev zip git
+          
+          # Klonen des für PortMaster optimierten DarkPlaces-Codes von Slayer366
+          git clone https://github.com/slayer366/darkplaces.git engine-src
+          cd engine-src
+          
+          # R36S / RK3326 (Cortex-A35) Hardware-Optimierungen injizieren
+          export CFLAGS="-O3 -march=armv8-a+crc -mtune=cortex-a35 -ffast-math"
+          
+          # Engine für SDL/GLES kompilieren
+          make sdl-release
+          
+          # Struktur für die Ausgabe vorbereiten
+          cd ..
+          mkdir -p dist/rexuiz
+          cp engine-src/darkplaces-sdl dist/rexuiz/rexuiz-bin
+          chmod +x dist/rexuiz/rexuiz-bin
+
+    - name: Copy Scripts and Package Zip
+      run: |
+        # Lokale Skripte in den Build-Ordner schieben
+        cp Rexuiz.sh dist/
+        cp autoexec.cfg dist/rexuiz/
+        chmod +x dist/Rexuiz.sh
+        
+        # Komplettes PortMaster-Paket schnüren
+        cd dist
+        zip -r ../rexuiz-portmaster.zip Rexuiz.sh rexuiz/
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: rexuiz-r36s-portmaster
+        path: rexuiz-portmaster.zip
