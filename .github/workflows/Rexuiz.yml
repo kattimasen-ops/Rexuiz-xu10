@@ -22,34 +22,40 @@ jobs:
         distro: ubuntu20.04
         githubToken: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Paketquellen aktualisieren und alle alten + neuen Abhängigkeiten installieren
+          # Verhindert interaktive Abfragen während der Installation
+          export DEBIAN_FRONTEND=noninteractive
+          
+          # 1. Paketquellen aktualisieren und ALLE benötigten Abhängigkeiten installieren
           apt-get update
           apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev libjpeg-dev libopus-dev zlib1g-dev zip git
           
-          # Klonen des für PortMaster optimierten DarkPlaces-Codes von Slayer366
+          # 2. Klonen des für PortMaster optimierten DarkPlaces-Codes von Slayer366
           git clone https://github.com/slayer366/darkplaces.git engine-src
           cd engine-src
           
-          # R36S / RK3326 (Cortex-A35) Hardware-Optimierungen injizieren
+          # 3. R36S / RK3326 (Cortex-A35) Hardware-Optimierungen injizieren
           export CFLAGS="-O3 -march=armv8-a+crc -mtune=cortex-a35 -ffast-math"
           
-          # Engine für SDL/GLES kompilieren
-          make sdl-release
+          # 4. Engine kompilieren - MIT ALLEN VERFÜGBAREN CPU-KERNEN (-j$(nproc))
+          make sdl-release -j$(nproc)
           
-          # Struktur für die Ausgabe vorbereiten
+          # 5. Struktur für die Ausgabe vorbereiten
           cd ..
           mkdir -p dist/rexuiz
           cp engine-src/darkplaces-sdl dist/rexuiz/rexuiz-bin
           chmod +x dist/rexuiz/rexuiz-bin
+          
+          # 6. RECHTE-OPTIMIERUNG: Skripte als Root kopieren, um Permission-Fehler zu vermeiden
+          cp Rexuiz.sh dist/
+          cp autoexec.cfg dist/rexuiz/
+          chmod +x dist/Rexuiz.sh
+          
+          # Ordnerrechte für den nachfolgenden GitHub-User komplett freigeben
+          chmod -R 777 dist
 
-    - name: Copy Scripts and Package Zip
+    - name: Package Zip
       run: |
-        # Lokale Skripte in den Build-Ordner schieben
-        cp Rexuiz.sh dist/
-        cp autoexec.cfg dist/rexuiz/
-        chmod +x dist/Rexuiz.sh
-        
-        # Komplettes PortMaster-Paket schnüren
+        # Komplettes PortMaster-Paket fehlerfrei schnüren
         cd dist
         zip -r ../rexuiz-portmaster.zip Rexuiz.sh rexuiz/
 
