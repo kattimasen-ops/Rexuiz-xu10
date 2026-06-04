@@ -36,8 +36,8 @@ jobs:
           # 3. R36S / RK3326 (Cortex-A35) Hardware-Optimierungen injizieren
           export CFLAGS="-O3 -march=armv8-a+crc -mtune=cortex-a35 -ffast-math"
           
-          # 4. Engine kompilieren - MIT ALLEN VERFÜGBAREN CPU-KERNEN (-j$(nproc))
-          make sdl-release -j$(nproc)
+          # 4. Engine kompilieren - ZURÜCK AUF SINGLE-CORE FÜR 100% STABILITÄT unter QEMU
+          make sdl-release
           
           # 5. Struktur für die Ausgabe vorbereiten
           cd ..
