@@ -1,4 +1,4 @@
-name: Build Rexuiz for R36S (Stable O1 Build)
+name: Build Rexuiz for R36S (Stable O0 Build)
 
 on:
   push:
@@ -32,17 +32,18 @@ jobs:
             git clone https://github.com/slayer366/darkplaces.git engine-src
             cd engine-src
             
-            # 3. Makefiles anpassen: Erzwinge -O1 für absolute Stabilität unter QEMU
-            sed -i 's/-O3/-O1/g' makefile.inc
-            sed -i 's/-O2/-O1/g' makefile.inc
+            # 3. Makefiles anpassen: Erzwinge -O0 zur Vermeidung von QEMU/GCC Segfaults
+            sed -i 's/-O3/-O0/g' makefile.inc
+            sed -i 's/-O2/-O0/g' makefile.inc
+            sed -i 's/-O1/-O0/g' makefile.inc
             sed -i 's/-ffinite-math-only//g' makefile.inc
             sed -i 's/-fno-math-errno//g' makefile.inc
             sed -i 's/-fno-rounding-math//g' makefile.inc
             sed -i 's/-fno-signaling-nans//g' makefile.inc
             sed -i 's/-fno-trapping-math//g' makefile.inc
             
-            # 4. Engine kompilieren (stabil mit -j1 und -O1)
-            make -j1 sdl-release OPT_RELEASE="-O1 -march=armv8-a+crc -mtune=cortex-a35"
+            # 4. Engine kompilieren mit -O0 (absolut stabil unter QEMU)
+            make -j1 sdl-release OPT_RELEASE="-O0 -march=armv8-a+crc -mtune=cortex-a35"
             
             # 5. Ordnerstruktur vorbereiten
             cd ..
