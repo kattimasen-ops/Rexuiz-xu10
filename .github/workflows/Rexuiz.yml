@@ -1,4 +1,4 @@
-name: Build Rexuiz for R36S
+name: Build Rexuiz for R36S (Fixed Compiler Crash)
 
 on:
   push:
@@ -24,19 +24,32 @@ jobs:
           run: |
             export DEBIAN_FRONTEND=noninteractive
             
+            # 1. Abhängigkeiten installieren
             apt-get update
             apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev libjpeg-dev libopus-dev zlib1g-dev zip unzip wget git
             
+            # 2. Source-Code laden
             git clone https://github.com/slayer366/darkplaces.git engine-src
             cd engine-src
             
-            make -j1 sdl-release OPT_RELEASE="-O2 -march=armv8-a+crc -mtune=cortex-a35"
+            # 3. MAKEFILE PATCHEN: Erzwinge -O2 und entferne absturzverursachende Flags für QEMU
+            sed -i 's/-O3/-O2/g' makefile.inc
+            sed -i 's/-ffinite-math-only//g' makefile.inc
+            sed -i 's/-fno-math-errno//g' makefile.inc
+            sed -i 's/-fno-rounding-math//g' makefile.inc
+            sed -i 's/-fno-signaling-nans//g' makefile.inc
+            sed -i 's/-fno-trapping-math//g' makefile.inc
             
+            # 4. Engine kompilieren (stabil mit -j1)
+            make -j1 sdl-release
+            
+            # 5. Ordnerstruktur vorbereiten
             cd ..
             mkdir -p dist/rexuiz
             cp engine-src/darkplaces-sdl dist/rexuiz/rexuiz-bin
             chmod +x dist/rexuiz/rexuiz-bin
             
+            # 6. Spieldateien automatisch herunterladen und entpacken
             echo "Lade Rexuiz Spieldateien herunter..."
             wget -O rexuiz-data.zip "https://sourceforge.net/projects/rexuiz/files/latest/download"
             mkdir -p temp_data
@@ -50,13 +63,15 @@ jobs:
             
             rm -rf temp_data rexuiz-data.zip
             
+            # 7. Perfekt optimierte autoexec.cfg für den R36S erstellen
             cat << 'EOF' > dist/rexuiz/autoexec.cfg
             // ==========================================
-            // Rexuiz / DarkPlaces autoexec.cfg für R36S
+            // Rexuiz R36S Ultimate Performance & Controls
             // ==========================================
+            
+            // --- STEUERUNG ---
             joystick "1"
             joyadvanced "1"
-            
             bind JOY1 "menu_enter"
             bind JOY2 "togglemenu"
             bind JOY3 "+jump"
@@ -66,15 +81,29 @@ jobs:
             joyadvaxisy "1"
             joyadvaxisz "4"
             joyadvaxisr "2"
-            
             joyforwardsensitivity "-1.8"
             joyyawsensitivity "-1.8"
             joyadvancedupdate
+            
+            // --- PERFORMANCE & GRAFIK-OPTIMIERUNG (R36S) ---
+            gl_texturecompression "1"
+            r_shadows "0"
+            r_watersmooth "0"
+            r_coronas "0"
+            r_particles_quality "0.5"
+            v_gunkick "0"
+            
+            // --- AUFLÖSUNG & UI FÜR R36S (640x480) ---
+            vid_conwidth "640"
+            vid_conheight "480"
+            vid_fullscreen "1"
             EOF
             
+            # 8. Start-Skript kopieren
             cp Rexuiz.sh dist/
             chmod +x dist/Rexuiz.sh
             
+            # 9. Rechte freigeben
             chmod -R 777 dist
 
       - name: Package Zip
