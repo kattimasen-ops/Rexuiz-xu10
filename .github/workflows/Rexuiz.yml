@@ -25,7 +25,7 @@ jobs:
           # Verhindert interaktive Abfragen während der Installation
           export DEBIAN_FRONTEND=noninteractive
           
-          # 1. Paketquellen aktualisieren und ALLE benötigten Abhängigkeiten installieren
+          # 1. Paketquellen aktualisieren und alle benötigten Abhängigkeiten installieren
           apt-get update
           apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev libjpeg-dev libopus-dev zlib1g-dev zip git
           
@@ -33,29 +33,54 @@ jobs:
           git clone https://github.com/slayer366/darkplaces.git engine-src
           cd engine-src
           
-          # 3. R36S / RK3326 (Cortex-A35) Hardware-Optimierungen injizieren
-          export CFLAGS="-O3 -march=armv8-a+crc -mtune=cortex-a35 -ffast-math"
+          # 3. R36S / RK3326 (Cortex-A35) Hardware-Optimierungen (mit -O2 zur Vermeidung von QEMU-Compilerabstürzen)
+          export CFLAGS="-O2 -march=armv8-a+crc -mtune=cortex-a35"
           
-          # 4. Engine kompilieren - ZURÜCK AUF SINGLE-CORE FÜR 100% STABILITÄT unter QEMU
-          make sdl-release
+          # 4. Engine kompilieren (Seriell mit -j1 für maximale Stabilität unter Emulation)
+          make -j1 sdl-release
           
-          # 5. Struktur für die Ausgabe vorbereiten
+          # 5. Struktur für die Ausgabe vorbereiten und autoexec.cfg direkt generieren
           cd ..
           mkdir -p dist/rexuiz
           cp engine-src/darkplaces-sdl dist/rexuiz/rexuiz-bin
           chmod +x dist/rexuiz/rexuiz-bin
           
-          # 6. RECHTE-OPTIMIERUNG: Skripte als Root kopieren, um Permission-Fehler zu vermeiden
+          # Automatische Erstellung der autoexec.cfg für funktionierende Menü- & Gamepad-Steuerung
+          cat << 'EOF' > dist/rexuiz/autoexec.cfg
+          // ==========================================
+          // Rexuiz / DarkPlaces autoexec.cfg für R36S
+          // ==========================================
+          joystick "1"
+          joyadvanced "1"
+          
+          # Menü- und In-Game-Tastenbelegungen
+          bind JOY1 "menu_enter"
+          bind JOY2 "togglemenu"
+          bind JOY3 "+jump"
+          bind JOY4 "+attack"
+          
+          # Joystick-Achsen für den R36S (Linker Stick & D-Pad)
+          joyadvaxisx "3"
+          joyadvaxisy "1"
+          joyadvaxisz "4"
+          joyadvaxisr "2"
+          
+          # Empfindlichkeit anpassen
+          joyforwardsensitivity "-1.8"
+          joyyawsensitivity "-1.8"
+          joyadvancedupdate
+          EOF
+          
+          # 6. Start-Skript kopieren und ausführbar machen
           cp Rexuiz.sh dist/
-          cp autoexec.cfg dist/rexuiz/
           chmod +x dist/Rexuiz.sh
           
-          # Ordnerrechte für den nachfolgenden GitHub-User komplett freigeben
+          # Ordnerrechte für den Nachfolge-Schritt komplett freigeben
           chmod -R 777 dist
 
     - name: Package Zip
       run: |
-        # Komplettes PortMaster-Paket fehlerfrei schnüren
+        # Komplettes PortMaster-Paket schnüren
         cd dist
         zip -r ../rexuiz-portmaster.zip Rexuiz.sh rexuiz/
 
