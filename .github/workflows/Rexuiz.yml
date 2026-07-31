@@ -1,4 +1,4 @@
-name: Build Rexuiz for R36S (Fixed Compiler Crash)
+name: Build Rexuiz for R36S (Fixed Compiler ICE)
 
 on:
   push:
@@ -15,11 +15,11 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Build inside ARM64 Ubuntu 20.04 Container
+      - name: Build inside ARM64 Ubuntu 22.04 Container
         uses: uraimo/run-on-arch-action@v2
         with:
           arch: aarch64
-          distro: ubuntu20.04
+          distro: ubuntu22.04
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           run: |
             export DEBIAN_FRONTEND=noninteractive
@@ -32,7 +32,7 @@ jobs:
             git clone https://github.com/slayer366/darkplaces.git engine-src
             cd engine-src
             
-            # 3. MAKEFILE PATCHEN: Erzwinge -O2 und entferne absturzverursachende Flags für QEMU
+            # 3. Makefiles anpassen (-O2 für Stabilität unter Emulation)
             sed -i 's/-O3/-O2/g' makefile.inc
             sed -i 's/-ffinite-math-only//g' makefile.inc
             sed -i 's/-fno-math-errno//g' makefile.inc
