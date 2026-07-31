@@ -16,7 +16,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Build inside ARM64 Ubuntu 24.04 Container with Clang
-        uses: uraimo/run-on-arch-action@v2
+        uses: uraimo/run-on-arch-action@v3
         with:
           arch: aarch64
           distro: ubuntu24.04
