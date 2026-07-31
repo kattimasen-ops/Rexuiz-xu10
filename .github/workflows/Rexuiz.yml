@@ -9,90 +9,81 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository
-       uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    - name: Build inside ARM64 Ubuntu 20.04 Container
-      uses: uraimo/run-on-arch-action@v2
-      with:
-        arch: aarch64
-        distro: ubuntu20.04
-        githubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build inside ARM64 Ubuntu 20.04 Container
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: aarch64
+          distro: ubuntu20.04
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          run: |
+            export DEBIAN_FRONTEND=noninteractive
+            
+            apt-get update
+            apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev libjpeg-dev libopus-dev zlib1g-dev zip unzip wget git
+            
+            git clone https://github.com/slayer366/darkplaces.git engine-src
+            cd engine-src
+            
+            make -j1 sdl-release OPT_RELEASE="-O2 -march=armv8-a+crc -mtune=cortex-a35"
+            
+            cd ..
+            mkdir -p dist/rexuiz
+            cp engine-src/darkplaces-sdl dist/rexuiz/rexuiz-bin
+            chmod +x dist/rexuiz/rexuiz-bin
+            
+            echo "Lade Rexuiz Spieldateien herunter..."
+            wget -O rexuiz-data.zip "https://sourceforge.net/projects/rexuiz/files/latest/download"
+            mkdir -p temp_data
+            unzip -q rexuiz-data.zip -d temp_data
+            
+            if [ -d "temp_data/data" ]; then
+              cp -r temp_data/data dist/rexuiz/
+            else
+              find temp_data -type d -name "data" -exec cp -r {} dist/rexuiz/ \;
+            fi
+            
+            rm -rf temp_data rexuiz-data.zip
+            
+            cat << 'EOF' > dist/rexuiz/autoexec.cfg
+            // ==========================================
+            // Rexuiz / DarkPlaces autoexec.cfg für R36S
+            // ==========================================
+            joystick "1"
+            joyadvanced "1"
+            
+            bind JOY1 "menu_enter"
+            bind JOY2 "togglemenu"
+            bind JOY3 "+jump"
+            bind JOY4 "+attack"
+            
+            joyadvaxisx "3"
+            joyadvaxisy "1"
+            joyadvaxisz "4"
+            joyadvaxisr "2"
+            
+            joyforwardsensitivity "-1.8"
+            joyyawsensitivity "-1.8"
+            joyadvancedupdate
+            EOF
+            
+            cp Rexuiz.sh dist/
+            chmod +x dist/Rexuiz.sh
+            
+            chmod -R 777 dist
+
+      - name: Package Zip
         run: |
-          # Verhindert interaktive Abfragen während der Installation
-          export DEBIAN_FRONTEND=noninteractive
-          
-          # 1. Paketquellen aktualisieren und Abhängigkeiten installieren
-          apt-get update
-          apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev libjpeg-dev libopus-dev zlib1g-dev zip unzip wget git
-          
-          # 2. Klonen des für PortMaster optimierten DarkPlaces-Codes von Slayer366
-          git clone https://github.com/slayer366/darkplaces.git engine-src
-          cd engine-src
-          
-          # 3. Engine kompilieren und das Makefile zwingen, -O2 statt -O3 zu nutzen (verhindert QEMU-Abstürze)
-          make -j1 sdl-release OPT_RELEASE="-O2 -march=armv8-a+crc -mtune=cortex-a35"
-          
-          # 4. Struktur für die Ausgabe vorbereiten
-          cd ..
-          mkdir -p dist/rexuiz
-          cp engine-src/darkplaces-sdl dist/rexuiz/rexuiz-bin
-          chmod +x dist/rexuiz/rexuiz-bin
-          
-          # 5. Spieldateien automatisch von SourceForge herunterladen und entpacken
-          echo "Lade Rexuiz Spieldateien herunter..."
-          wget -O rexuiz-data.zip "https://sourceforge.net/projects/rexuiz/files/latest/download"
-          mkdir -p temp_data
-          unzip -q rexuiz-data.zip -d temp_data
-          
-          if [ -d "temp_data/data" ]; then
-            cp -r temp_data/data dist/rexuiz/
-          else
-            find temp_data -type d -name "data" -exec cp -r {} dist/rexuiz/ \;
-          fi
-          
-          rm -rf temp_data rexuiz-data.zip
-          
-          # 6. Automatische Erstellung der autoexec.cfg für die Steuerung
-          cat << 'EOF' > dist/rexuiz/autoexec.cfg
-          // ==========================================
-          // Rexuiz / DarkPlaces autoexec.cfg für R36S
-          // ==========================================
-          joystick "1"
-          joyadvanced "1"
-          
-          bind JOY1 "menu_enter"
-          bind JOY2 "togglemenu"
-          bind JOY3 "+jump"
-          bind JOY4 "+attack"
-          
-          joyadvaxisx "3"
-          joyadvaxisy "1"
-          joyadvaxisz "4"
-          joyadvaxisr "2"
-          
-          joyforwardsensitivity "-1.8"
-          joyyawsensitivity "-1.8"
-          joyadvancedupdate
-          EOF
-          
-          # 7. Start-Skript kopieren und ausführbar machen
-          cp Rexuiz.sh dist/
-          chmod +x dist/Rexuiz.sh
-          
-          # 8. Ordnerrechte freigeben
-          chmod -R 777 dist
+          cd dist
+          zip -r ../rexuiz-portmaster.zip Rexuiz.sh rexuiz/
 
-    - name: Package Zip
-      run: |
-        cd dist
-        zip -r ../rexuiz-portmaster.zip Rexuiz.sh rexuiz/
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: rexuiz-r36s-portmaster
-        path: rexuiz-portmaster.zip
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rexuiz-r36s-portmaster
+          path: rexuiz-portmaster.zip
