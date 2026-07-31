@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+       uses: actions/checkout@v4
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -25,7 +25,7 @@ jobs:
           # Verhindert interaktive Abfragen während der Installation
           export DEBIAN_FRONTEND=noninteractive
           
-          # 1. Paketquellen aktualisieren und Abhängigkeiten (inkl. wget & unzip) installieren
+          # 1. Paketquellen aktualisieren und Abhängigkeiten installieren
           apt-get update
           apt-get install -y build-essential libsdl2-dev libtheora-dev libvorbis-dev libpng-dev libjpeg-dev libopus-dev zlib1g-dev zip unzip wget git
           
@@ -33,36 +33,30 @@ jobs:
           git clone https://github.com/slayer366/darkplaces.git engine-src
           cd engine-src
           
-          # 3. Hardware-Optimierungen
-          export CFLAGS="-O2 -march=armv8-a+crc -mtune=cortex-a35"
+          # 3. Engine kompilieren und das Makefile zwingen, -O2 statt -O3 zu nutzen (verhindert QEMU-Abstürze)
+          make -j1 sdl-release OPT_RELEASE="-O2 -march=armv8-a+crc -mtune=cortex-a35"
           
-          # 4. Engine kompilieren
-          make -j1 sdl-release
-          
-          # 5. Struktur für die Ausgabe vorbereiten
+          # 4. Struktur für die Ausgabe vorbereiten
           cd ..
           mkdir -p dist/rexuiz
           cp engine-src/darkplaces-sdl dist/rexuiz/rexuiz-bin
           chmod +x dist/rexuiz/rexuiz-bin
           
-          # 6. Spieldateien automatisch von SourceForge herunterladen und entpacken
+          # 5. Spieldateien automatisch von SourceForge herunterladen und entpacken
           echo "Lade Rexuiz Spieldateien herunter..."
           wget -O rexuiz-data.zip "https://sourceforge.net/projects/rexuiz/files/latest/download"
           mkdir -p temp_data
           unzip -q rexuiz-data.zip -d temp_data
           
-          # Den data-Ordner an die richtige Stelle im Build-Verzeichnis kopieren
           if [ -d "temp_data/data" ]; then
             cp -r temp_data/data dist/rexuiz/
           else
-            # Falls das Archiv den data-Ordner in einem Unterordner hat, dynamisch finden
             find temp_data -type d -name "data" -exec cp -r {} dist/rexuiz/ \;
           fi
           
-          # Aufräumen der temporären Download-Dateien
           rm -rf temp_data rexuiz-data.zip
           
-          # 7. Automatische Erstellung der autoexec.cfg für die Steuerung
+          # 6. Automatische Erstellung der autoexec.cfg für die Steuerung
           cat << 'EOF' > dist/rexuiz/autoexec.cfg
           // ==========================================
           // Rexuiz / DarkPlaces autoexec.cfg für R36S
@@ -85,11 +79,11 @@ jobs:
           joyadvancedupdate
           EOF
           
-          # 8. Start-Skript kopieren und ausführbar machen
+          # 7. Start-Skript kopieren und ausführbar machen
           cp Rexuiz.sh dist/
           chmod +x dist/Rexuiz.sh
           
-          # 9. Ordnerrechte für den Nachfolge-Schritt freigeben
+          # 8. Ordnerrechte freigeben
           chmod -R 777 dist
 
     - name: Package Zip
